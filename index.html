@@ -207,7 +207,7 @@ const WEAPONS = [
     { id:'knife', name:'Нож',      icon:'🔪', range:-10, cd:12, desc:'Быстрая, но короткая',cost:100, maxLvl:4, costMult:1.7 },
     { id:'bat',   name:'Бита',     icon:'🏏', range:35, cd:24, desc:'Широкая и мощная',     cost:250, maxLvl:4, costMult:1.7 },
     { id:'katana',name:'Катана',   icon:'🗡️', range:30, cd:18, desc:'Острая атака ниндзя',  cost:300, maxLvl:5, costMult:1.6 },
-    { id:'concrete',name:'Мешалка',icon:'🏗️', range:25, cd:25, desc:'Даёт щит при ударе',   cost:550, maxLvl:3, costMult:2.0 },
+    { id:'concrete',name:'Мешалка',icon:'🏗️', range:25, cd:25, desc:'Даёт +1 щит при старте',   cost:550, maxLvl:3, costMult:2.0 },
     { id:'pistol', name:'Пистолет',icon:'🔫', range:60, cd:22, desc:'Дальняя атака',        cost:800, maxLvl:4, costMult:1.8 },
     { id:'sawblade',name:'Диск',   icon:'💿', range:55, cd:20, desc:'Возвращается как бумеранг',cost:1200, maxLvl:4, costMult:1.7 },
     { id:'staff',  name:'Посох',   icon:'🔮', range:70, cd:28, desc:'Магическая волна',     cost:2000, maxLvl:5, costMult:1.6 },
@@ -339,11 +339,11 @@ function handleAttack() {
 
 document.addEventListener('keydown',e=>{
     if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();if(!state.playing&&!startScreen.classList.contains('hidden'))return;handleJump()}
-    if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();if(state.grounded&&state.playing)state.crouching=true}
+    if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();if(state.grounded&&state.playing){state.crouching=true;state.charY=GROUND_Y-getCharH()}}
     if(e.code==='KeyJ'||e.code==='KeyE'){e.preventDefault();handleAttack()}
 });
 document.addEventListener('keyup',e=>{
-    if(e.code==='ArrowDown'||e.code==='KeyS'){if(state.playing)state.crouching=false}
+    if(e.code==='ArrowDown'||e.code==='KeyS'){if(state.playing){state.crouching=false;if(state.grounded)state.charY=GROUND_Y-getCharH()}}
 });
 canvas.addEventListener('mousedown',e=>{e.preventDefault();if(!state.playing&&!startScreen.classList.contains('hidden'))return;if(e.button===2){handleAttack();return}handleJump()});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
