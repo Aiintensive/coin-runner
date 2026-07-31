@@ -322,6 +322,14 @@ function handleAttack() {
         const ox=o.x+o.w/2, oy=o.y-o.h/2;
         if(Math.abs(ox-atkX)<atkRange&&Math.abs(oy-atkY)<35){
             if(!o.hp)continue;
+            const canBlock=o.type==='bigzombie'||isBossType(o.type);
+            if(canBlock&&o.blockCd<=0&&Math.random()<(isBossType(o.type)?.3:.2)){
+                o.blockCd=isBossType(o.type)?130:90;
+                o.flash=6;
+                state.coinPopups.push({x:o.x+o.w/2,y:o.y-o.h/2-20,text:'🛡️ БЛОК!',life:30,maxLife:30});
+                addHitEffect(o.x+o.w/2,o.y-o.h/2);
+                hit=true;state.hitStop=3;break;
+            }
             o.hp--;o.flash=6;
             if(o.hp<=0){
                 const isBoss=isBossType(o.type);
@@ -431,7 +439,7 @@ function spawnObstacle() {
 }
 function spawnZombie() {
     const isBig=Math.random()<.2;
-    if(isBig)state.obstacles.push({x:W+50,y:GROUND_Y,w:34,h:52,type:'bigzombie',rot:0,bobPhase:0,armPhase:0,hp:3,flash:0});
+    if(isBig)state.obstacles.push({x:W+50,y:GROUND_Y,w:34,h:52,type:'bigzombie',rot:0,bobPhase:0,armPhase:0,hp:3,flash:0,blockCd:0});
     else state.obstacles.push({x:W+40,y:GROUND_Y,w:24,h:38,type:'zombie',rot:0,bobPhase:0,armPhase:0,hp:1,flash:0});
 }
 function isBossType(type){return type==='bosszombie'||type==='bossalien'}
@@ -439,10 +447,10 @@ function spawnBoss() {
     const space=state.distance>=15000;
     if(space){
         state.bossPopup={text:'👽 ИНОПЛАНЕТЯНИН!',life:90,maxLife:90};
-        state.obstacles.push({x:W+50,y:GROUND_Y,w:58,h:74,type:'bossalien',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
+        state.obstacles.push({x:W+50,y:GROUND_Y,w:58,h:74,type:'bossalien',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false,blockCd:0});
     }else{
         state.bossPopup={text:'👹 БОСС ЗОМБИ!',life:90,maxLife:90};
-        state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
+        state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false,blockCd:0});
     }
     state.shakeAmount=8;
 }
@@ -892,7 +900,7 @@ function update() {
             if(isNaN(o.x)||isNaN(o.y))o.x=-999
         }
         else o.x-=state.scrollSpeed;
-        o.rot+=.06;if(o.type==='zombie'||o.type==='bigzombie'||isBossType(o.type)){o.bobPhase+=.06;o.armPhase+=.04;if(o.flash>0)o.flash--}
+        o.rot+=.06;if(o.type==='zombie'||o.type==='bigzombie'||isBossType(o.type)){o.bobPhase+=.06;o.armPhase+=.04;if(o.flash>0)o.flash--;if(o.blockCd>0)o.blockCd--}
         const cl=state.charX+4,cr=state.charX+CHAR_W-4,ct=state.charY+4,cb=state.charY+charH;
         const ol=o.x,or=o.x+o.w,ot=o.y-o.h,ob=o.y;
         if(cr>ol&&cl<or&&cb>ot&&ct<ob){
@@ -1145,6 +1153,10 @@ function draw() {
                 ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,(o.w-8)*(o.hp/8),4,2);ctx.fill();
             }
             if(o.flash>0){ctx.globalAlpha=o.flash/6*.5;ctx.fillStyle='#fff';ctx.fillRect(o.x-4,o.y-o.h-2,o.w+8,o.h+4);ctx.globalAlpha=1}
+            if(o.blockCd>0&&o.blockCd>100){
+                ctx.strokeStyle=`rgba(100,200,255,${.5+.3*Math.sin(Date.now()*.03)})`;ctx.lineWidth=3;
+                ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h/2,34,0,Math.PI*2);ctx.stroke();
+            }
         }else if(o.type==='zombie'||o.type==='bigzombie'||o.type==='bosszombie'){
             const isBoss=o.type==='bosszombie',isBig=o.type==='bigzombie'||isBoss;
             const bob=Math.sin(o.bobPhase)*2,ls=Math.sin(o.bobPhase)*(isBig?7:5);
@@ -1187,6 +1199,10 @@ function draw() {
             if(isBig&&o.hp>0){
                 ctx.fillStyle='rgba(255,0,0,.4)';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,o.w-8,4,2);ctx.fill();
                 ctx.fillStyle=isBoss?'#e74c3c':'#e74c3c';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,(o.w-8)*(o.hp/(isBoss?8:3)),4,2);ctx.fill();
+            }
+            if(o.blockCd>0&&o.blockCd>100){
+                ctx.strokeStyle=`rgba(100,200,255,${.5+.3*Math.sin(Date.now()*.03)})`;ctx.lineWidth=3;
+                ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h/2,isBig?34:22,0,Math.PI*2);ctx.stroke();
             }
             if(o.flash>0){ctx.globalAlpha=o.flash/6*.5;ctx.fillStyle='#fff';ctx.fillRect(o.x-4,o.y-o.h-2,o.w+8,o.h+4);ctx.globalAlpha=1}
         }
