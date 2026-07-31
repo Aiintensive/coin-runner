@@ -324,7 +324,7 @@ function handleAttack() {
             if(!o.hp)continue;
             o.hp--;o.flash=6;
             if(o.hp<=0){
-                const isBoss=o.type==='bosszombie';
+                const isBoss=isBossType(o.type);
                 (isBoss||o.type==='bigzombie'?addBigDeathEffect:addHitEffect)(o.x+o.w/2,o.y-o.h/2);
                 if(isBoss)spawnGifts(o.x+o.w/2,o.y-o.h/2,6);
                 else if(o.type==='bigzombie')spawnGifts(o.x+o.w/2,o.y-o.h/2,3);
@@ -434,16 +434,23 @@ function spawnZombie() {
     if(isBig)state.obstacles.push({x:W+50,y:GROUND_Y,w:34,h:52,type:'bigzombie',rot:0,bobPhase:0,armPhase:0,hp:3,flash:0});
     else state.obstacles.push({x:W+40,y:GROUND_Y,w:24,h:38,type:'zombie',rot:0,bobPhase:0,armPhase:0,hp:1,flash:0});
 }
+function isBossType(type){return type==='bosszombie'||type==='bossalien'}
 function spawnBoss() {
-    state.bossPopup={text:'👹 БОСС ЗОМБИ!',life:90,maxLife:90};
+    const space=state.distance>=15000;
+    if(space){
+        state.bossPopup={text:'👽 ИНОПЛАНЕТЯНИН!',life:90,maxLife:90};
+        state.obstacles.push({x:W+50,y:GROUND_Y,w:58,h:74,type:'bossalien',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
+    }else{
+        state.bossPopup={text:'👹 БОСС ЗОМБИ!',life:90,maxLife:90};
+        state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
+    }
     state.shakeAmount=8;
-    state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
 }
 function startMinigame(boss){
-    if(!boss||boss.type!=='bosszombie'||boss.hp<=0)return;
+    if(!boss||!isBossType(boss.type)||boss.hp<=0)return;
     boss.minigameDone=true;
     state.minigame={boss:boss,playerHits:0,bossHits:0,time:420,maxTime:420,punchCd:0,bossPunchCd:50,active:true};
-    state.bossPopup={text:'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
+    state.bossPopup={text:boss.type==='bossalien'?'👊 БОЙ С ИНОПЛАНЕТЯНИНОМ!':'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
     state.shakeAmount=6;
 }
 function minigamePunch(){
@@ -486,16 +493,17 @@ function endMinigame(instantWin){
     const b=m.boss;
     if(!b)return;
     const win=instantWin||(m.playerHits>m.bossHits);
+    const isAlien=b.type==='bossalien';
     if(win){
         addBigDeathEffect(b.x+b.w/2,b.y-b.h/2);
         spawnGifts(b.x+b.w/2,b.y-b.h/2,6);
         state.obstacles=state.obstacles.filter(o=>o!==b);
-        state.bossPopup={text:'🎉 ПОБЕДА! Босс повержен!',life:90,maxLife:90};
+        state.bossPopup={text:isAlien?'🎉 ПОБЕДА! Пришелец повержен!':'🎉 ПОБЕДА! Босс повержен!',life:90,maxLife:90};
         state.shakeAmount=10;
     }else{
         state.hp-=15;state.invincible=30;state.shakeAmount=8;
         addHitEffect(state.charX+CHAR_W/2,state.charY+8);
-        state.bossPopup={text:'💀 Босс победил!',life:90,maxLife:90};
+        state.bossPopup={text:isAlien?'💀 Пришелец победил!':'💀 Босс победил!',life:90,maxLife:90};
     }
     if(state.hp<=0)gameOver();
 }
@@ -774,14 +782,14 @@ function update() {
     const brate=Math.max(900,Math.floor(1400-state.upgrades.speed*20));
     if(state.bossTimer>=brate){
         state.bossTimer=0;
-        if(!state.obstacles.some(o=>o.type==='bosszombie'))spawnBoss();
+        if(!state.obstacles.some(o=>isBossType(o.type)))spawnBoss();
     }
 
     // Boss minigame trigger when player is near the boss
     if(!state.minigame){
         for(let i=0;i<state.obstacles.length;i++){
             const bo=state.obstacles[i];
-            if(bo&&bo.type==='bosszombie'&&!bo.minigameDone&&bo.hp>0){
+            if(bo&&isBossType(bo.type)&&!bo.minigameDone&&bo.hp>0){
                 const bx=bo.x+bo.w/2;
                 if(Math.abs(bx-(state.charX+CHAR_W/2))<150){startMinigame(bo);break}
             }
@@ -873,9 +881,9 @@ function update() {
     if(isNaN(charCX)||isNaN(charCY)){return}
     state.obstacles=state.obstacles.filter(o=>{
         if(typeof o.x!=='number'||typeof o.y!=='number'||isNaN(o.x)||isNaN(o.y))return false;
-        if(o.type==='zombie'||o.type==='bigzombie'||o.type==='bosszombie'){
+        if(o.type==='zombie'||o.type==='bigzombie'||isBossType(o.type)){
             o.x-=state.scrollSpeed;
-            const chaseSpeed=state.scrollSpeed*(o.type==='bosszombie'?.25:o.type==='bigzombie'?.35:.5);
+            const chaseSpeed=state.scrollSpeed*(isBossType(o.type)?.25:o.type==='bigzombie'?.35:.5);
             const cx=charCX,cy=charCY;
             if(o.x>cx)o.x-=chaseSpeed;else o.x+=chaseSpeed*.3;
             const dy=cy-(o.y-o.h/2);
@@ -884,7 +892,7 @@ function update() {
             if(isNaN(o.x)||isNaN(o.y))o.x=-999
         }
         else o.x-=state.scrollSpeed;
-        o.rot+=.06;if(o.type==='zombie'||o.type==='bigzombie'||o.type==='bosszombie'){o.bobPhase+=.06;o.armPhase+=.04;if(o.flash>0)o.flash--}
+        o.rot+=.06;if(o.type==='zombie'||o.type==='bigzombie'||isBossType(o.type)){o.bobPhase+=.06;o.armPhase+=.04;if(o.flash>0)o.flash--}
         const cl=state.charX+4,cr=state.charX+CHAR_W-4,ct=state.charY+4,cb=state.charY+charH;
         const ol=o.x,or=o.x+o.w,ot=o.y-o.h,ob=o.y;
         if(cr>ol&&cl<or&&cb>ot&&ct<ob){
@@ -893,7 +901,7 @@ function update() {
                 state.shieldHP--;state.shakeAmount=6;state.invincible=20;
                 addHitEffect(o.x+o.w/2,o.y-o.h/2);
                 if(o.hp){o.hp--;o.flash=6;if(o.hp<=0){
-                    if(o.type==='bosszombie'){addBigDeathEffect(o.x+o.w/2,o.y-o.h/2);spawnGifts(o.x+o.w/2,o.y-o.h/2,6)}
+                    if(isBossType(o.type)){addBigDeathEffect(o.x+o.w/2,o.y-o.h/2);spawnGifts(o.x+o.w/2,o.y-o.h/2,6)}
                     else if(o.type==='bigzombie'){addBigDeathEffect(o.x+o.w/2,o.y-o.h/2);spawnGifts(o.x+o.w/2,o.y-o.h/2,3)}
                     return false
                 }return o.x>-50}
@@ -1103,6 +1111,40 @@ function draw() {
             ctx.beginPath();ctx.arc(0,0,r*.4,0,Math.PI*2);ctx.fillStyle=adjustBrightness('#e74c3c',30);ctx.fill();
             ctx.beginPath();ctx.arc(0,0,r*.25,0,Math.PI*2);ctx.fillStyle='#666';ctx.fill();
             ctx.restore();
+        }else if(o.type==='bossalien'){
+            const isBoss=true,isBig=true;
+            const bob=Math.sin(o.bobPhase)*2,ls=Math.sin(o.bobPhase)*7;
+            const bodyColor='#1a8a4a';
+            const skinColor='#2ecc71';
+            const legColor='#146b3a';
+            const armColor='#27ae60';
+            const yOff=4;
+            ctx.fillStyle=legColor;
+            ctx.fillRect(o.x+4,o.y-14-ls*.3+yOff,8,14);ctx.fillRect(o.x+o.w-16,o.y-14+ls*.3+yOff,8,14);
+            ctx.fillStyle=bodyColor;ctx.beginPath();ctx.roundRect(o.x+4,o.y-o.h+10+bob,o.w-8,16+yOff,4);ctx.fill();
+            ctx.fillStyle='#146b3a';ctx.fillRect(o.x+6,o.y-o.h+16+bob,8,5);
+            ctx.fillStyle=skinColor;ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h+6+bob,13,0,Math.PI*2);ctx.fill();
+            // Antennae
+            ctx.strokeStyle='#27ae60';ctx.lineWidth=2;
+            ctx.beginPath();ctx.moveTo(o.x+o.w/2-7,o.y-o.h-2+bob);ctx.lineTo(o.x+o.w/2-10,o.y-o.h-14+bob);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(o.x+o.w/2+7,o.y-o.h-2+bob);ctx.lineTo(o.x+o.w/2+10,o.y-o.h-14+bob);ctx.stroke();
+            ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(o.x+o.w/2-10,o.y-o.h-15+bob,2.5,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(o.x+o.w/2+10,o.y-o.h-15+bob,2.5,0,Math.PI*2);ctx.fill();
+            // Big alien eyes
+            ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(o.x+o.w/2-7,o.y-o.h+5+bob,5,6,0,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.ellipse(o.x+o.w/2+7,o.y-o.h+5+bob,5,6,0,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#222';ctx.beginPath();ctx.arc(o.x+o.w/2-7,o.y-o.h+5+bob,2.5,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(o.x+o.w/2+7,o.y-o.h+5+bob,2.5,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#146b3a';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(o.x+o.w/2-3,o.y-o.h+9+bob);ctx.lineTo(o.x+o.w/2+3,o.y-o.h+9+bob);ctx.stroke();
+            const ay=o.y-o.h+12+bob+Math.sin(o.armPhase)*3;
+            ctx.fillStyle=armColor;
+            ctx.fillRect(o.x-4,ay,7,12);
+            ctx.fillRect(o.x+o.w-3,ay,7,12);
+            if(o.hp>0){
+                ctx.fillStyle='rgba(255,0,0,.4)';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,o.w-8,4,2);ctx.fill();
+                ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,(o.w-8)*(o.hp/8),4,2);ctx.fill();
+            }
+            if(o.flash>0){ctx.globalAlpha=o.flash/6*.5;ctx.fillStyle='#fff';ctx.fillRect(o.x-4,o.y-o.h-2,o.w+8,o.h+4);ctx.globalAlpha=1}
         }else if(o.type==='zombie'||o.type==='bigzombie'||o.type==='bosszombie'){
             const isBoss=o.type==='bosszombie',isBig=o.type==='bigzombie'||isBoss;
             const bob=Math.sin(o.bobPhase)*2,ls=Math.sin(o.bobPhase)*(isBig?7:5);
@@ -1478,11 +1520,12 @@ function draw() {
         ctx.fillStyle=tp>.5?'#2ecc71':tp>.25?'#f39c12':'#e74c3c';
         ctx.beginPath();ctx.roundRect(W/2-158,22,316*tp,10,5);ctx.fill();
         // VS header
+        const isAlien=m.boss&&m.boss.type==='bossalien';
         ctx.fillStyle='#ff4444';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('👊 БОЙ С БОССОМ!',W/2,60);
+        ctx.fillText(isAlien?'👊 БОЙ С ИНОПЛАНЕТЯНИНОМ!':'👊 БОЙ С БОССОМ!',W/2,60);
         if(enraged){
             ctx.fillStyle='#ff4444';ctx.font='bold 15px Arial';
-            ctx.fillText('😡 БОСС В ЯРОСТИ!',W/2,82);
+            ctx.fillText(isAlien?'😡 ПРИШЕЛЕЦ В ЯРОСТИ!':'😡 БОСС В ЯРОСТИ!',W/2,82);
         }
         // Player (left) and Boss (right) characters
         const fx=W*.25,fy=H*.5;
@@ -1500,22 +1543,39 @@ function draw() {
         // Boss (right)
         const bx=W*.75,by=H*.5;
         ctx.save();ctx.translate(bx,by);ctx.scale(1.8,1.8);
-        if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle=enraged?'#6a2a5a':'#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
-        ctx.fillStyle=enraged?'#8a4a7a':'#5a4a7a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(-6,-39,3.5,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.arc(6,-39,3.5,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,-50);ctx.lineTo(-3,-42);ctx.lineTo(3,-50);ctx.lineTo(9,-42);ctx.stroke();
-        ctx.fillStyle='#222';ctx.fillRect(-10,-56,20,4);
-        ctx.fillStyle='#ff4444';ctx.fillRect(-10,-53,3,4);ctx.fillRect(7,-53,3,4);
-        // Punch arm
-        ctx.strokeStyle='#4a3a6a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
-        ctx.fillStyle='#5a4a7a';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
+        if(isAlien){
+            if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=enraged?'#0f6a3a':'#1a8a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
+            ctx.fillStyle=enraged?'#239b58':'#2ecc71';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#27ae60';ctx.lineWidth=2;
+            ctx.beginPath();ctx.moveTo(-8,-48);ctx.lineTo(-11,-62);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(8,-48);ctx.lineTo(11,-62);ctx.stroke();
+            ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(-11,-63,2.5,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(11,-63,2.5,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-6,-38,4.5,6,0,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.ellipse(6,-38,4.5,6,0,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#222';ctx.beginPath();ctx.arc(-6,-38,2.2,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(6,-38,2.2,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#4a3a6a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
+            ctx.fillStyle='#27ae60';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
+        }else{
+            if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=enraged?'#6a2a5a':'#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
+            ctx.fillStyle=enraged?'#8a4a7a':'#5a4a7a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(-6,-39,3.5,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(6,-39,3.5,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,-50);ctx.lineTo(-3,-42);ctx.lineTo(3,-50);ctx.lineTo(9,-42);ctx.stroke();
+            ctx.fillStyle='#222';ctx.fillRect(-10,-56,20,4);
+            ctx.fillStyle='#ff4444';ctx.fillRect(-10,-53,3,4);ctx.fillRect(7,-53,3,4);
+            // Punch arm
+            ctx.strokeStyle='#4a3a6a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
+            ctx.fillStyle='#5a4a7a';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
+        }
         ctx.restore();
         // Hit counters
         ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillStyle='#2ecc71';ctx.fillText('Ты: '+m.playerHits+' ударов',W*.25,H*.68);
-        ctx.fillStyle='#ff4444';ctx.fillText('Босс: '+m.bossHits+' ударов',W*.75,H*.68);
+        ctx.fillStyle='#ff4444';ctx.fillText((isAlien?'Пришелец: ':'Босс: ')+m.bossHits+' ударов',W*.75,H*.68);
         // Boss HP bar
         ctx.fillStyle='rgba(0,0,0,.6)';ctx.beginPath();ctx.roundRect(W/2-150,H*.55,300,12,6);ctx.fill();
         ctx.fillStyle=enraged?'#ff8c00':'#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/8),8,4);ctx.fill();
