@@ -49,8 +49,9 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
         try {
-            let body = {};
-            try { body = JSON.parse(req.body || '{}'); } catch (e) { body = {}; }
+            let body = req.body || {};
+            if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+            else if (Buffer.isBuffer(body)) { try { body = JSON.parse(body.toString('utf8')); } catch (e) { body = {}; } }
             const score = {
                 player: String(body.player || 'Игрок').slice(0, 20),
                 score: Math.floor(Number(body.score) || 0),
