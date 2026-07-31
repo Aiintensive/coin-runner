@@ -84,6 +84,8 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
 .menu-btn.shop{background:linear-gradient(145deg,#e3a87e,#c5855a)}
 .menu-btn.world2{background:linear-gradient(145deg,#a87ee3,#7e5ac5)}
 .menu-btn.world3{background:linear-gradient(145deg,#4dc3b5,#1f8a7a)}
+.menu-btn.locked{filter:grayscale(1);opacity:.5;cursor:not-allowed;box-shadow:none}
+.menu-btn.locked:hover{transform:none;box-shadow:none}
 .menu-btn.back{background:linear-gradient(145deg,#888,#666);box-shadow:none;font-size:14px;padding:8px 24px}
 .menu-btn.back:hover{box-shadow:none}
 .skin-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 16px}
@@ -657,6 +659,16 @@ function updateMenuDisplay(){
     if(tc)tc.textContent='💰 Всего монет: '+saveData.totalEarned;
     const sc=document.getElementById('shopCoins');
     if(sc)sc.textContent='💰 '+saveData.totalEarned;
+    const w2=document.getElementById('world2Btn'),w3=document.getElementById('world3Btn');
+    const unlocked2=(saveData.highScore||0)>=15000,unlocked3=(saveData.highScore||0)>=30000;
+    if(w2){
+        w2.textContent=unlocked2?'🚀 Второй мир':'🔒 Второй мир (15000 м)';
+        w2.classList.toggle('locked',!unlocked2);
+    }
+    if(w3){
+        w3.textContent=unlocked3?'🌌 Третий мир':'🔒 Третий мир (30000 м)';
+        w3.classList.toggle('locked',!unlocked3);
+    }
 }
 function renderSkins() {
     skinGrid.innerHTML='';
@@ -763,6 +775,9 @@ document.getElementById('shopBackBtn').addEventListener('touchend',e=>{e.prevent
 document.getElementById('shopStartBtn').addEventListener('click',()=>startGame(shopMode==='cyber'?30000:15000));
 document.getElementById('shopStartBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(shopMode==='cyber'?30000:15000)});
 function openWorldMenu(world){
+    const hs=saveData.highScore||0;
+    if(world==='space'&&hs<15000){alert('🔒 Нужен рекорд 15000 м, чтобы открыть Второй мир!');return}
+    if(world==='cyber'&&hs<30000){alert('🔒 Нужен рекорд 30000 м, чтобы открыть Третий мир!');return}
     if(world==='space'){
         shopMode='space';
         document.getElementById('welcomeTitle').textContent='🚀 Второй мир';
@@ -825,6 +840,9 @@ function getWorldSkin(startDist){
 
 function startGame(startDist) {
     startDist = (typeof startDist==='number'&&!isNaN(startDist))?startDist:0;
+    const hs=saveData.highScore||0;
+    if(startDist>=30000&&hs<30000)startDist=0;
+    else if(startDist>=15000&&hs<15000)startDist=0;
     state.coins=0;state.distance=startDist;state.distanceSinceLastStop=0;state.coinsSinceLastStop=0;state.coinsEarnedThisRun=0;
     state.upgrades={speed:0,magnet:0,double:0,jump:0,shield:0,attack:0};
     state.charY=GROUND_Y-CHAR_H_NORMAL;state.charVY=0;
