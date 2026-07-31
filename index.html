@@ -99,6 +99,7 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
             <button class="menu-btn" id="playBtn">▶ Играть</button>
             <button class="menu-btn skin" id="skinBtn">🎨 Скины</button>
             <button class="menu-btn shop" id="weaponShopBtn">🗡️ Оружие</button>
+            <button class="menu-btn world2" id="world2Btn">🚀 Второй мир</button>
             <div style="margin-top:12px;color:#666;font-size:11px">
                 ⬆ Пробел/клик — прыжок &nbsp; ⬇ S/↓ — скольжение &nbsp; ⚔ J / E / ПКМ — удар
             </div>
@@ -552,6 +553,8 @@ function renderWeapons() {
 
 document.getElementById('playBtn').addEventListener('click',startGame);
 document.getElementById('playBtn').addEventListener('touchend',e=>{e.preventDefault();startGame()});
+document.getElementById('world2Btn').addEventListener('click',()=>startGame(15000));
+document.getElementById('world2Btn').addEventListener('touchend',e=>{e.preventDefault();startGame(15000)});
 document.getElementById('restartBtn').addEventListener('click',startGame);
 document.getElementById('restartBtn').addEventListener('touchend',e=>{e.preventDefault();startGame()});
 document.getElementById('skinBtn').addEventListener('click',()=>{mainMenu.style.display='none';skinMenu.style.display='block';renderSkins()});
@@ -559,14 +562,15 @@ document.getElementById('skinBackBtn').addEventListener('click',()=>{skinMenu.st
 document.getElementById('weaponShopBtn').addEventListener('click',()=>{shopOverlay.classList.add('active');renderWeapons()});
 document.getElementById('shopBackBtn').addEventListener('click',()=>{shopOverlay.classList.remove('active')});
 
-function startGame() {
-    state.coins=0;state.distance=0;state.distanceSinceLastStop=0;state.coinsSinceLastStop=0;state.coinsEarnedThisRun=0;
+function startGame(startDist) {
+    startDist = (typeof startDist==='number'&&!isNaN(startDist))?startDist:0;
+    state.coins=0;state.distance=startDist;state.distanceSinceLastStop=0;state.coinsSinceLastStop=0;state.coinsEarnedThisRun=0;
     state.upgrades={speed:0,magnet:0,double:0,jump:0,shield:0,attack:0};
     state.charY=GROUND_Y-CHAR_H_NORMAL;state.charVY=0;
     state.grounded=true;state.bobPhase=0;state.crouching=false;state.jumpsLeft=2;
     state.coinsList=[];state.obstacles=[];state.obstacleTimer=0;state.zombieTimer=0;state.spawnTimer=0;
     state.particles=[];state.milestoneTexts='';state.slashEffects=[];state.coinPopups=[];state.milestonePopup=null;
-    state.lastCoinMilestone=0;state.lastDistMilestone=0;
+    state.lastCoinMilestone=0;state.lastDistMilestone=0;state.lastBiomeIdx=-1;
     state.upgrading=false;state.gameOver=false;state.shakeAmount=0;
     state.attacking=false;state.attackTimer=0;state.attackCooldown=0;
     state.weaponDrops=[];state.weaponDropTimer=0;
@@ -575,6 +579,7 @@ function startGame() {
     state.currentSkin=saveData.skin;state.currentWeapon=saveData.weapon;
     recalcUpgrades();
     if(getWeapon().id==='concrete')state.shieldHP=Math.min(3,state.shieldHP+1);
+    if(startDist>=15000)state.biomePopup={text:'🚀 Второй мир!',life:80,maxLife:80};
     startScreen.classList.add('hidden');
     document.getElementById('upgrade-overlay').classList.remove('active');
     document.getElementById('gameover-overlay').classList.remove('active');
