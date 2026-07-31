@@ -1872,16 +1872,20 @@ let lastFrameTime=0;
 function gameLoop(timestamp){
     try{
         if(!timestamp)timestamp=performance.now();
+        if(document.hidden){lastFrameTime=0;requestAnimationFrame(gameLoop);return}
         if(lastFrameTime>0){
             const dt=timestamp-lastFrameTime;
             if(dt>5000){lastFrameTime=timestamp;requestAnimationFrame(gameLoop);return}
             if(dt>200){lastFrameTime=timestamp;requestAnimationFrame(gameLoop);return}
         }
         lastFrameTime=timestamp;
-        update();draw()
+        if(state.playing)update();
+        draw()
     }catch(e){console.error('Game error:',e)}
     requestAnimationFrame(gameLoop)
 }
+document.addEventListener('visibilitychange',()=>{lastFrameTime=0});
+window.addEventListener('pagehide',()=>{lastFrameTime=0});
 updateMenuDisplay();
 loadCloudScores();
 gameLoop();
