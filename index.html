@@ -147,7 +147,8 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
             <div class="welcome-emoji" id="welcomeEmoji">🛸</div>
             <div class="shop-title" id="welcomeTitle">🚀 Второй мир</div>
             <div class="welcome-text" id="welcomeText">Привет игрок! Добро пожаловать в космос</div>
-            <button class="menu-btn skin" id="welcomeSkinBtn" style="margin-top:16px">🎨 Скины</button>
+            <button class="menu-btn" id="welcomePlayBtn" style="margin-top:16px">▶ Играть</button>
+            <button class="menu-btn skin" id="welcomeSkinBtn" style="margin-top:4px">🎨 Скины</button>
             <button class="menu-btn shop" id="welcomeContinueBtn" style="margin-top:4px">🎒 Запас оружия →</button>
             <button class="menu-btn back" id="welcomeBackBtn">← Назад</button>
         </div>
@@ -772,6 +773,8 @@ document.getElementById('world3Btn').addEventListener('click',()=>openWorldMenu(
 document.getElementById('world3Btn').addEventListener('touchend',e=>{e.preventDefault();openWorldMenu('cyber')});
 document.getElementById('welcomeContinueBtn').addEventListener('click',openWorldShop);
 document.getElementById('welcomeContinueBtn').addEventListener('touchend',e=>{e.preventDefault();openWorldShop()});
+document.getElementById('welcomePlayBtn').addEventListener('click',()=>startGame(shopMode==='cyber'?30000:15000));
+document.getElementById('welcomePlayBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(shopMode==='cyber'?30000:15000)});
 document.getElementById('welcomeBackBtn').addEventListener('click',()=>{welcomeOverlay.classList.remove('active')});
 document.getElementById('welcomeBackBtn').addEventListener('touchend',e=>{e.preventDefault();welcomeOverlay.classList.remove('active')});
 document.getElementById('welcomeSkinBtn').addEventListener('click',()=>{
