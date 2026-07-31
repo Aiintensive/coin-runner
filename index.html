@@ -803,6 +803,15 @@ document.getElementById('welcomeSkinBtn').addEventListener('touchend',e=>{
     skinMenu.style.display='block';renderSkins()
 });
 
+function getWorldSkin(startDist){
+    const owned=saveData.owned||[];
+    if(startDist>=30000)return owned.includes('bigrobot')?'bigrobot':owned.includes('robot')?'robot':'robot';
+    if(startDist>=15000)return owned.includes('bigalien')?'bigalien':owned.includes('alien')?'alien':'alien';
+    const cur=SKINS.find(s=>s.id===saveData.skin);
+    if(cur&&!cur.alien&&!cur.robot)return cur.id;
+    return owned.includes('dark')?'dark':owned.includes('gold')?'gold':owned.includes('purple')?'purple':owned.includes('green')?'green':owned.includes('blue')?'blue':'default';
+}
+
 function startGame(startDist) {
     startDist = (typeof startDist==='number'&&!isNaN(startDist))?startDist:0;
     state.coins=0;state.distance=startDist;state.distanceSinceLastStop=0;state.coinsSinceLastStop=0;state.coinsEarnedThisRun=0;
@@ -818,7 +827,7 @@ function startGame(startDist) {
     state.minigame=null;
     state.hp=100;state.maxHp=100;state.invincible=0;
     state.crouching=false;
-    state.currentSkin=saveData.skin;state.currentWeapon=saveData.weapon;
+    state.currentSkin=getWorldSkin(startDist);state.currentWeapon=saveData.weapon;
     recalcUpgrades();
     if(getWeapon().id==='concrete'||getWeapon().id==='alienconcrete'||getWeapon().id==='rainbowconcrete')state.shieldHP=Math.min(3,state.shieldHP+1);
     if(startDist>=30000)state.biomePopup={text:'🌌 Кибермир!',life:80,maxLife:80};
