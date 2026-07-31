@@ -284,6 +284,7 @@ const state = {
     particles:[], milestoneTexts:'', shakeAmount:0, slashEffects:[], milestonePopup:null, biomePopup:null, bossPopup:null,
     coinPopups:[], coinsEarnedThisRun:0,
     weaponDrops:[], weaponDropTimer:0, gifts:[],
+    minigame:null,
     currentSkin: saveData.skin, currentWeapon: saveData.weapon,
 };
 
@@ -351,19 +352,28 @@ function handleAttack() {
 }
 
 document.addEventListener('keydown',e=>{
-    if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();if(!state.playing&&!startScreen.classList.contains('hidden'))return;handleJump()}
+    if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){
+        e.preventDefault();
+        if(state.minigame){minigamePunch();return}
+        if(!state.playing&&!startScreen.classList.contains('hidden'))return;handleJump()
+    }
     if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();if(state.grounded&&state.playing){state.crouching=true;state.charY=GROUND_Y-getCharH()}}
-    if(e.code==='KeyJ'||e.code==='KeyE'){e.preventDefault();handleAttack()}
+    if(e.code==='KeyJ'||e.code==='KeyE'){
+        e.preventDefault();
+        if(state.minigame){minigamePunch();return}
+        handleAttack()
+    }
 });
 document.addEventListener('keyup',e=>{
     if(e.code==='ArrowDown'||e.code==='KeyS'){if(state.playing){state.crouching=false;if(state.grounded)state.charY=GROUND_Y-getCharH()}}
 });
-canvas.addEventListener('mousedown',e=>{e.preventDefault();if(!state.playing&&!startScreen.classList.contains('hidden'))return;if(e.button===2){handleAttack();return}handleJump()});
+canvas.addEventListener('mousedown',e=>{e.preventDefault();if(state.minigame){minigamePunch();return}if(!state.playing&&!startScreen.classList.contains('hidden'))return;if(e.button===2){handleAttack();return}handleJump()});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 // Touch controls for mobile
 let mobTouchId=null,mobTouches=0;
 canvas.addEventListener('touchstart',e=>{
     e.preventDefault();
+    if(state.minigame){minigamePunch();return}
     if(!state.playing&&!startScreen.classList.contains('hidden'))return;
     mobTouches=e.touches.length;
     if(e.touches.length>=2){handleAttack();return}
@@ -427,7 +437,58 @@ function spawnZombie() {
 function spawnBoss() {
     state.bossPopup={text:'👹 БОСС ЗОМБИ!',life:90,maxLife:90};
     state.shakeAmount=8;
-    state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0});
+    state.obstacles.push({x:W+50,y:GROUND_Y,w:56,h:76,type:'bosszombie',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false});
+}
+function startMinigame(boss){
+    if(!boss||boss.type!=='bosszombie'||boss.hp<=0)return;
+    boss.minigameDone=true;
+    state.minigame={boss:boss,playerHits:0,bossHits:0,time:480,maxTime:480,punchCd:0,bossPunchCd:70,active:true};
+    state.bossPopup={text:'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
+    state.shakeAmount=6;
+}
+function minigamePunch(){
+    const m=state.minigame;
+    if(!m)return;
+    m.playerHits++;
+    if(m.boss.hp>0)m.boss.hp--;
+    m.boss.flash=6;
+    addHitEffect(state.charX+CHAR_W/2,state.charY+10);
+    state.shakeAmount=Math.min(8,state.shakeAmount+2);
+    if(m.boss.hp<=0)endMinigame(true);
+}
+function updateMinigame(){
+    const m=state.minigame;
+    if(!m)return;
+    m.time--;
+    m.bossPunchCd--;
+    if(m.bossPunchCd<=0){
+        m.bossPunchCd=70;
+        m.bossHits++;
+        addHitEffect(state.charX+CHAR_W/2,state.charY+10);
+        state.hp-=4;state.invincible=15;state.shakeAmount=6;
+        if(state.hp<=0){gameOver();return}
+    }
+    if(m.time<=0)endMinigame(false);
+}
+function endMinigame(instantWin){
+    const m=state.minigame;
+    if(!m)return;
+    state.minigame=null;
+    const b=m.boss;
+    if(!b)return;
+    const win=instantWin||(m.playerHits>m.bossHits);
+    if(win){
+        addBigDeathEffect(b.x+b.w/2,b.y-b.h/2);
+        spawnGifts(b.x+b.w/2,b.y-b.h/2,6);
+        state.obstacles=state.obstacles.filter(o=>o!==b);
+        state.bossPopup={text:'🎉 ПОБЕДА! Босс повержен!',life:90,maxLife:90};
+        state.shakeAmount=10;
+    }else{
+        state.hp-=15;state.invincible=30;state.shakeAmount=8;
+        addHitEffect(state.charX+CHAR_W/2,state.charY+8);
+        state.bossPopup={text:'💀 Босс победил!',life:90,maxLife:90};
+    }
+    if(state.hp<=0)gameOver();
 }
 function spawnGifts(x,y,count){
     if(typeof x!=='number'||typeof y!=='number'||isNaN(x)||isNaN(y))return;
@@ -598,6 +659,7 @@ function startGame(startDist) {
     state.upgrading=false;state.gameOver=false;state.shakeAmount=0;
     state.attacking=false;state.attackTimer=0;state.attackCooldown=0;
     state.weaponDrops=[];state.weaponDropTimer=0;state.gifts=[];
+    state.minigame=null;
     state.hp=100;state.maxHp=100;state.invincible=0;
     state.crouching=false;
     state.currentSkin=saveData.skin;state.currentWeapon=saveData.weapon;
@@ -705,6 +767,18 @@ function update() {
         state.bossTimer=0;
         if(!state.obstacles.some(o=>o.type==='bosszombie'))spawnBoss();
     }
+
+    // Boss minigame trigger when player is near the boss
+    if(!state.minigame){
+        for(let i=0;i<state.obstacles.length;i++){
+            const bo=state.obstacles[i];
+            if(bo&&bo.type==='bosszombie'&&!bo.minigameDone&&bo.hp>0){
+                const bx=bo.x+bo.w/2;
+                if(Math.abs(bx-(state.charX+CHAR_W/2))<150){startMinigame(bo);break}
+            }
+        }
+    }
+    if(state.minigame){updateMinigame();return}
 
     // Run particles
     if(state.grounded&&state.playing){
@@ -1383,6 +1457,62 @@ function draw() {
     ctx.fillText(curWpn.icon+' '+curWpn.name+(getWeaponLvl(curWpn.id)>0?' +'+getWeaponLvl(curWpn.id):''),W-18,117);
     // Damage flash
     if(state.invincible>20){const da=(state.invincible-20)/10;ctx.fillStyle=`rgba(200,0,0,${da*.3})`;ctx.fillRect(0,0,W,H)}
+    // Minigame overlay
+    if(state.minigame){
+        const m=state.minigame;
+        const skin=getSkin();
+        ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
+        // Timer bar
+        const tp=Math.max(0,m.time/m.maxTime);
+        ctx.fillStyle='rgba(0,0,0,.6)';ctx.beginPath();ctx.roundRect(W/2-160,20,320,14,7);ctx.fill();
+        ctx.fillStyle=tp>.5?'#2ecc71':tp>.25?'#f39c12':'#e74c3c';
+        ctx.beginPath();ctx.roundRect(W/2-158,22,316*tp,10,5);ctx.fill();
+        // VS header
+        ctx.fillStyle='#ff4444';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('👊 БОЙ С БОССОМ!',W/2,60);
+        // Player (left) and Boss (right) characters
+        const fx=W*.25,fy=H*.5;
+        // Player
+        ctx.save();ctx.translate(fx,fy);ctx.scale(1.6,1.6);
+        ctx.fillStyle=skin.body;ctx.beginPath();ctx.roundRect(-12,-18,24,32,6);ctx.fill();
+        ctx.fillStyle=skin.detail;ctx.beginPath();ctx.roundRect(-9,-12,18,8,3);ctx.fill();
+        ctx.fillStyle='#fdbcb4';ctx.beginPath();ctx.arc(0,-26,10,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#333';ctx.beginPath();ctx.arc(-4,-27,1.8,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(4,-27,1.8,0,Math.PI*2);ctx.fill();
+        // Punch arm
+        ctx.strokeStyle=skin.body;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(12,-6);ctx.lineTo(24,-12);ctx.stroke();
+        ctx.fillStyle='#fdbcb4';ctx.beginPath();ctx.arc(24,-12,5,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+        // Boss (right)
+        const bx=W*.75,by=H*.5;
+        ctx.save();ctx.translate(bx,by);ctx.scale(1.8,1.8);
+        ctx.fillStyle='#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
+        ctx.fillStyle='#5a4a7a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(-6,-39,3.5,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(6,-39,3.5,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,-50);ctx.lineTo(-3,-42);ctx.lineTo(3,-50);ctx.lineTo(9,-42);ctx.stroke();
+        ctx.fillStyle='#222';ctx.fillRect(-10,-56,20,4);
+        ctx.fillStyle='#ff4444';ctx.fillRect(-10,-53,3,4);ctx.fillRect(7,-53,3,4);
+        // Punch arm
+        ctx.strokeStyle='#4a3a6a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
+        ctx.fillStyle='#5a4a7a';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+        // Hit counters
+        ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle='#2ecc71';ctx.fillText('Ты: '+m.playerHits+' ударов',W*.25,H*.68);
+        ctx.fillStyle='#ff4444';ctx.fillText('Босс: '+m.bossHits+' ударов',W*.75,H*.68);
+        // Boss HP bar
+        ctx.fillStyle='rgba(0,0,0,.6)';ctx.beginPath();ctx.roundRect(W/2-150,H*.55,300,12,6);ctx.fill();
+        ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/8),8,4);ctx.fill();
+        // Prompt
+        const pulse=.7+.3*Math.sin(Date.now()*.01);
+        ctx.globalAlpha=pulse;
+        ctx.fillStyle='#fff';ctx.font='bold 20px Arial';
+        ctx.fillText('ЖМИ ПРОБЕЛ / КЛИК — БЕЙ!',W/2,H*.82);
+        ctx.globalAlpha=1;
+        ctx.font='12px Arial';ctx.fillStyle='#aaa';
+        ctx.fillText('Больше ударов до конца таймера — победа',W/2,H*.88);
+    }
     // Author credit
     ctx.fillStyle='rgba(255,255,255,.12)';ctx.font='9px Arial';ctx.textAlign='right';ctx.textBaseline='bottom';
     ctx.fillText('Автор Арман Сагинтаев',W-6,H-4);
