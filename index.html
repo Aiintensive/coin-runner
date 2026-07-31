@@ -325,7 +325,10 @@ const state = {
     currentSkin: saveData.skin, currentWeapon: saveData.weapon,
 };
 
-function getSkin() { return SKINS.find(s=>s.id===state.currentSkin)||SKINS[0]; }
+function getSkin() {
+    const d=typeof state.distance==='number'&&!isNaN(state.distance)?state.distance:0;
+    return SKINS.find(s=>s.id===getWorldSkin(d))||SKINS[0];
+}
 function getWeapon() { return WEAPONS.find(w=>w.id===state.currentWeapon)||WEAPONS[0]; }
 function getWeaponLvl(id){const v=saveData.weaponLvls[id];return typeof v==='number'&&!isNaN(v)?v:0}
 function getWpnRange(w){return (typeof w.range==='number'?w.range:0)+getWeaponLvl(w.id)*8}
@@ -908,7 +911,12 @@ function update() {
     state.groundOffset=(state.groundOffset+state.scrollSpeed)%40;
     // Biome change detection
     const bIdx=BIOMES.indexOf(getBiome(state.distance));
-    if(bIdx!==state.lastBiomeIdx){state.lastBiomeIdx=bIdx;state.biomePopup={text:'📍 '+BIOMES[bIdx].name,life:80,maxLife:80}}
+    if(bIdx!==state.lastBiomeIdx){
+        state.lastBiomeIdx=bIdx;
+        state.biomePopup={text:'📍 '+BIOMES[bIdx].name,life:80,maxLife:80};
+        if(state.distance>=30000){state.currentSkin=getWorldSkin(30000)}
+        else if(state.distance>=15000){state.currentSkin=getWorldSkin(15000)}
+    }
     if(state.shakeAmount>0){state.shakeAmount*=.9;if(state.shakeAmount<.5)state.shakeAmount=0}
     if(state.attacking){state.attackTimer--;if(state.attackTimer<=0)state.attacking=false}
     if(state.attackCooldown>0)state.attackCooldown--;
