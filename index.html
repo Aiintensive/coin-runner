@@ -73,6 +73,8 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
 .menu-btn:hover{transform:scale(1.05);box-shadow:0 6px 30px rgba(255,215,0,.5)}
 .menu-btn.skin{background:linear-gradient(145deg,#7ec8e3,#5a9ab5)}
 .menu-btn.shop{background:linear-gradient(145deg,#e3a87e,#c5855a)}
+.menu-btn.world2{background:linear-gradient(145deg,#a87ee3,#7e5ac5)}
+.menu-btn.world3{background:linear-gradient(145deg,#4dc3b5,#1f8a7a)}
 .menu-btn.back{background:linear-gradient(145deg,#888,#666);box-shadow:none;font-size:14px;padding:8px 24px}
 .menu-btn.back:hover{box-shadow:none}
 .skin-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 16px}
@@ -100,6 +102,7 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
             <button class="menu-btn skin" id="skinBtn">🎨 Скины</button>
             <button class="menu-btn shop" id="weaponShopBtn">🗡️ Оружие</button>
             <button class="menu-btn world2" id="world2Btn">🚀 Второй мир</button>
+            <button class="menu-btn world3" id="world3Btn">🌌 Третий мир</button>
             <div style="margin-top:12px;color:#666;font-size:11px">
                 ⬆ Пробел/клик — прыжок &nbsp; ⬇ S/↓ — скольжение &nbsp; ⚔ J / E / ПКМ — удар
             </div>
@@ -242,7 +245,8 @@ const BIOMES = [
     { limit:8000, name:'❄️ Снег', skyDay:[200,220,240], skySunset:[180,150,200], skyNight:[20,30,60], ground:[0,0,65], line:[0,0,50], mount:[140,160,180], decor:'snow' },
     { limit:12000, name:'🌋 Лава', skyDay:[200,100,80], skySunset:[180,60,40], skyNight:[60,10,20], ground:[0,50,25], line:[0,60,20], mount:[80,40,40], decor:'lava' },
     { limit:15000, name:'🌃 Город', skyDay:[100,120,160], skySunset:[180,80,100], skyNight:[10,10,30], ground:[0,0,20], line:[0,0,35], mount:[40,50,70], decor:'city' },
-    { limit:Infinity, name:'🚀 Второй мир', skyDay:[10,10,45], skySunset:[70,25,90], skyNight:[4,4,18], ground:[22,12,42], line:[55,35,85], mount:[90,60,130], decor:'space' },
+    { limit:30000, name:'🚀 Второй мир', skyDay:[10,10,45], skySunset:[70,25,90], skyNight:[4,4,18], ground:[22,12,42], line:[55,35,85], mount:[90,60,130], decor:'space' },
+    { limit:Infinity, name:'🌌 Кибермир', skyDay:[25,10,50], skySunset:[90,0,60], skyNight:[5,0,15], ground:[15,0,25], line:[0,255,200], mount:[40,0,80], decor:'cyber' },
 ];
 function getBiome(dist){for(let i=0;i<BIOMES.length;i++){if((dist||0)<BIOMES[i].limit)return BIOMES[i]}return BIOMES[BIOMES.length-1]}
 
@@ -449,10 +453,14 @@ function spawnZombie() {
     if(isBig)state.obstacles.push({x:W+50,y:GROUND_Y,w:34,h:52,type:'bigzombie',rot:0,bobPhase:0,armPhase:0,hp:3,flash:0,blockCd:0});
     else state.obstacles.push({x:W+40,y:GROUND_Y,w:24,h:38,type:'zombie',rot:0,bobPhase:0,armPhase:0,hp:1,flash:0});
 }
-function isBossType(type){return type==='bosszombie'||type==='bossalien'}
+function isBossType(type){return type==='bosszombie'||type==='bossalien'||type==='bossrobot'}
 function spawnBoss() {
-    const space=state.distance>=15000;
-    if(space){
+    const cyber=state.distance>=30000;
+    const space=state.distance>=15000&&state.distance<30000;
+    if(cyber){
+        state.bossPopup={text:'🤖 БОСС-РОБОТ!',life:90,maxLife:90};
+        state.obstacles.push({x:W+50,y:GROUND_Y,w:60,h:78,type:'bossrobot',rot:0,bobPhase:0,armPhase:0,hp:10,flash:0,minigameDone:false,blockCd:0});
+    }else if(space){
         state.bossPopup={text:'👽 ИНОПЛАНЕТЯНИН!',life:90,maxLife:90};
         state.obstacles.push({x:W+50,y:GROUND_Y,w:58,h:74,type:'bossalien',rot:0,bobPhase:0,armPhase:0,hp:8,flash:0,minigameDone:false,blockCd:0});
     }else{
@@ -465,15 +473,16 @@ function startMinigame(boss){
     if(!boss||!isBossType(boss.type)||boss.hp<=0)return;
     boss.minigameDone=true;
     state.minigame={boss:boss,playerHits:0,bossHits:0,time:420,maxTime:420,punchCd:0,bossPunchCd:50,active:true};
-    state.bossPopup={text:boss.type==='bossalien'?'👊 БОЙ С ИНОПЛАНЕТЯНИНОМ!':'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
+    state.bossPopup={text:boss.type==='bossalien'?'👊 БОЙ С ИНОПЛАНЕТЯНИНОМ!':boss.type==='bossrobot'?'👊 БОЙ С РОБОТОМ!':'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
     state.shakeAmount=6;
 }
 function minigamePunch(){
     const m=state.minigame;
     if(!m)return;
     m.playerHits++;
-    const enraged=m.boss&&m.boss.hp<=3;
-    const blocked=enraged?Math.random()<.12:Math.random()<.18;
+    const isRobot=m.boss&&m.boss.type==='bossrobot';
+    const enraged=m.boss&&m.boss.hp<=(isRobot?4:3);
+    const blocked=enraged?Math.random()<.14:Math.random()<(isRobot?.2:.18);
     if(blocked&&m.boss.hp>0){
         state.coinPopups.push({x:state.charX+CHAR_W/2,y:state.charY-10,text:'БЛОК!',life:25,maxLife:25});
         return;
@@ -488,9 +497,10 @@ function updateMinigame(){
     const m=state.minigame;
     if(!m)return;
     m.time--;
-    const enraged=m.boss&&m.boss.hp<=3;
-    const punchCd=enraged?38:50;
-    const dmg=enraged?6:5;
+    const isRobot=m.boss&&m.boss.type==='bossrobot';
+    const enraged=m.boss&&m.boss.hp<=(isRobot?4:3);
+    const punchCd=enraged?(isRobot?30:38):(isRobot?42:50);
+    const dmg=enraged?(isRobot?8:6):(isRobot?7:5);
     m.bossPunchCd--;
     if(m.bossPunchCd<=0){
         m.bossPunchCd=punchCd;
@@ -509,16 +519,18 @@ function endMinigame(instantWin){
     if(!b)return;
     const win=instantWin||(m.playerHits>m.bossHits);
     const isAlien=b.type==='bossalien';
+    const isRobot=b.type==='bossrobot';
+    const bName=isAlien?'Пришелец':isRobot?'Робот':'Босс';
     if(win){
         addBigDeathEffect(b.x+b.w/2,b.y-b.h/2);
-        spawnGifts(b.x+b.w/2,b.y-b.h/2,6);
+        spawnGifts(b.x+b.w/2,b.y-b.h/2,isRobot?9:6);
         state.obstacles=state.obstacles.filter(o=>o!==b);
-        state.bossPopup={text:isAlien?'🎉 ПОБЕДА! Пришелец повержен!':'🎉 ПОБЕДА! Босс повержен!',life:90,maxLife:90};
+        state.bossPopup={text:'🎉 ПОБЕДА! '+bName+' повержен!',life:90,maxLife:90};
         state.shakeAmount=10;
     }else{
         state.hp-=15;state.invincible=30;state.shakeAmount=8;
         addHitEffect(state.charX+CHAR_W/2,state.charY+8);
-        state.bossPopup={text:isAlien?'💀 Пришелец победил!':'💀 Босс победил!',life:90,maxLife:90};
+        state.bossPopup={text:'💀 '+bName+' победил!',life:90,maxLife:90};
     }
     if(state.hp<=0)gameOver();
 }
@@ -698,6 +710,8 @@ document.getElementById('world2Btn').addEventListener('touchend',e=>{
     document.getElementById('shopStartBtn').style.display='inline-block';
     shopOverlay.classList.add('active');renderWeapons(true)
 });
+document.getElementById('world3Btn').addEventListener('click',()=>startGame(30000));
+document.getElementById('world3Btn').addEventListener('touchend',e=>{e.preventDefault();startGame(30000)});
 
 function startGame(startDist) {
     startDist = (typeof startDist==='number'&&!isNaN(startDist))?startDist:0;
@@ -717,7 +731,8 @@ function startGame(startDist) {
     state.currentSkin=saveData.skin;state.currentWeapon=saveData.weapon;
     recalcUpgrades();
     if(getWeapon().id==='concrete'||getWeapon().id==='alienconcrete')state.shieldHP=Math.min(3,state.shieldHP+1);
-    if(startDist>=15000)state.biomePopup={text:'🚀 Второй мир!',life:80,maxLife:80};
+    if(startDist>=30000)state.biomePopup={text:'🌌 Кибермир!',life:80,maxLife:80};
+    else if(startDist>=15000)state.biomePopup={text:'🚀 Второй мир!',life:80,maxLife:80};
     startScreen.classList.add('hidden');
     document.getElementById('upgrade-overlay').classList.remove('active');
     document.getElementById('gameover-overlay').classList.remove('active');
@@ -1092,6 +1107,25 @@ function draw() {
             const sx=((i*271.3+dist*.02)%W),sr=3+(i*23.3%5),sy=GROUND_Y-40-(i*67.7%50);
             ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
         }
+    }else if(biome.decor==='cyber'){
+        ctx.fillStyle=`rgba(0,255,200,${decorAlpha*.8})`;
+        for(let i=0;i<8;i++){
+            const bx=((i*127.7+dist*.012)%W),bw=14+(i*23.7%14),bh=25+(i*37.1%45);
+            ctx.fillStyle=`rgba(30,0,60,${decorAlpha})`;
+            ctx.fillRect(bx,GROUND_Y-bh,bw,bh);
+            ctx.fillStyle=`rgba(0,255,200,${decorAlpha*.7})`;
+            ctx.fillRect(bx,GROUND_Y-bh,2,bh);
+            ctx.fillStyle=`rgba(255,0,200,${.1+(i*.07)})`;
+            ctx.fillRect(bx+5,GROUND_Y-bh+5,3,3);ctx.fillRect(bx+9,GROUND_Y-bh+14,3,3);
+        }
+        ctx.fillStyle=`rgba(0,255,200,${decorAlpha*.5})`;
+        for(let i=0;i<3;i++){
+            const gx=((i*321.7+dist*.022)%W),gh=GROUND_Y+8+(i*41.3%20);
+            ctx.fillRect(gx,gh,2,GROUND_Y+10-gh);
+            ctx.fillStyle=`rgba(255,0,200,${.2+Math.abs(Math.sin(dist*.01+i))* .15})`;
+            ctx.fillRect(gx-2,gh,6,2);
+            ctx.fillStyle=`rgba(0,255,200,${decorAlpha*.5})`;
+        }
     }
 
     // Ground with gradient and texture
@@ -1178,6 +1212,41 @@ function draw() {
             if(o.hp>0){
                 ctx.fillStyle='rgba(255,0,0,.4)';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,o.w-8,4,2);ctx.fill();
                 ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,(o.w-8)*(o.hp/8),4,2);ctx.fill();
+            }
+            if(o.flash>0){ctx.globalAlpha=o.flash/6*.5;ctx.fillStyle='#fff';ctx.fillRect(o.x-4,o.y-o.h-2,o.w+8,o.h+4);ctx.globalAlpha=1}
+            if(o.blockCd>0&&o.blockCd>100){
+                ctx.strokeStyle=`rgba(100,200,255,${.5+.3*Math.sin(Date.now()*.03)})`;ctx.lineWidth=3;
+                ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h/2,34,0,Math.PI*2);ctx.stroke();
+            }
+        }else if(o.type==='bossrobot'){
+            const bob=Math.sin(o.bobPhase)*2,ls=Math.sin(o.bobPhase)*7;
+            const yOff=4;
+            ctx.fillStyle='#3a4a4a';
+            ctx.fillRect(o.x+4,o.y-14-ls*.3+yOff,8,14);ctx.fillRect(o.x+o.w-16,o.y-14+ls*.3+yOff,8,14);
+            ctx.fillStyle='#5a6a6a';ctx.beginPath();ctx.roundRect(o.x+4,o.y-o.h+10+bob,o.w-8,16+yOff,4);ctx.fill();
+            ctx.fillStyle='#0ff';ctx.fillRect(o.x+6,o.y-o.h+16+bob,8,5);
+            ctx.fillStyle='#4a5a5a';ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h+6+bob,13,0,Math.PI*2);ctx.fill();
+            // Antenna
+            ctx.strokeStyle='#aaa';ctx.lineWidth=2;
+            ctx.beginPath();ctx.moveTo(o.x+o.w/2,o.y-o.h-2+bob);ctx.lineTo(o.x+o.w/2,o.y-o.h-14+bob);ctx.stroke();
+            ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h-15+bob,2.5,0,Math.PI*2);ctx.fill();
+            // Visor eyes
+            ctx.fillStyle='#0ff';ctx.beginPath();ctx.roundRect(o.x+o.w/2-14,o.y-o.h+1+bob,28,8,3);ctx.fill();
+            ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(o.x+o.w/2-6,o.y-o.h+5+bob,2,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(o.x+o.w/2+6,o.y-o.h+5+bob,2,0,Math.PI*2);ctx.fill();
+            // Chest core
+            ctx.fillStyle='#0ff';ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-o.h+22+bob,5,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#0ff';ctx.lineWidth=1;
+            ctx.beginPath();ctx.moveTo(o.x+o.w/2-5,o.y-o.h+22+bob);ctx.lineTo(o.x+o.w/2-16,o.y-o.h+18+bob);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(o.x+o.w/2+5,o.y-o.h+22+bob);ctx.lineTo(o.x+o.w/2+16,o.y-o.h+18+bob);ctx.stroke();
+            const ay=o.y-o.h+12+bob+Math.sin(o.armPhase)*3;
+            ctx.fillStyle='#4a5a5a';
+            ctx.fillRect(o.x-4,ay,8,12);
+            ctx.fillRect(o.x+o.w-3,ay,8,12);
+            ctx.fillStyle='#0ff';ctx.fillRect(o.x-3,ay+2,3,3);ctx.fillRect(o.x+o.w-2,ay+2,3,3);
+            if(o.hp>0){
+                ctx.fillStyle='rgba(255,0,0,.4)';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,o.w-8,4,2);ctx.fill();
+                ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(o.x+4,o.y-6,(o.w-8)*(o.hp/10),4,2);ctx.fill();
             }
             if(o.flash>0){ctx.globalAlpha=o.flash/6*.5;ctx.fillStyle='#fff';ctx.fillRect(o.x-4,o.y-o.h-2,o.w+8,o.h+4);ctx.globalAlpha=1}
             if(o.blockCd>0&&o.blockCd>100){
@@ -1576,11 +1645,13 @@ function draw() {
         ctx.beginPath();ctx.roundRect(W/2-158,22,316*tp,10,5);ctx.fill();
         // VS header
         const isAlien=m.boss&&m.boss.type==='bossalien';
+        const isRobot=m.boss&&m.boss.type==='bossrobot';
+        const bName=isAlien?'ИНОПЛАНЕТЯНИНОМ':isRobot?'РОБОТОМ':'БОССОМ';
         ctx.fillStyle='#ff4444';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(isAlien?'👊 БОЙ С ИНОПЛАНЕТЯНИНОМ!':'👊 БОЙ С БОССОМ!',W/2,60);
+        ctx.fillText('👊 БОЙ С '+bName+'!',W/2,60);
         if(enraged){
             ctx.fillStyle='#ff4444';ctx.font='bold 15px Arial';
-            ctx.fillText(isAlien?'😡 ПРИШЕЛЕЦ В ЯРОСТИ!':'😡 БОСС В ЯРОСТИ!',W/2,82);
+            ctx.fillText(isAlien?'😡 ПРИШЕЛЕЦ В ЯРОСТИ!':isRobot?'😡 РОБОТ В ЯРОСТИ!':'😡 БОСС В ЯРОСТИ!',W/2,82);
         }
         // Player (left) and Boss (right) characters
         const fx=W*.25,fy=H*.5;
@@ -1613,6 +1684,18 @@ function draw() {
             ctx.beginPath();ctx.arc(6,-38,2.2,0,Math.PI*2);ctx.fill();
             ctx.strokeStyle='#4a3a6a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
             ctx.fillStyle='#27ae60';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
+        }else if(isRobot){
+            if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=enraged?'#2a5a5a':'#4a5a5a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
+            ctx.fillStyle=enraged?'#4a7a7a':'#5a6a6a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#aaa';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-50);ctx.lineTo(0,-64);ctx.stroke();
+            ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(0,-65,2.5,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#0ff';ctx.beginPath();ctx.roundRect(-11,-42,22,8,3);ctx.fill();
+            ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-4,-38,1.8,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(4,-38,1.8,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#0ff';ctx.beginPath();ctx.arc(0,-12,5,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle='#0ff';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,-16);ctx.stroke();
+            ctx.fillStyle='#4a5a5a';ctx.beginPath();ctx.arc(-30,-16,6,0,Math.PI*2);ctx.fill();
         }else{
             if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
             ctx.fillStyle=enraged?'#6a2a5a':'#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
@@ -1630,10 +1713,10 @@ function draw() {
         // Hit counters
         ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillStyle='#2ecc71';ctx.fillText('Ты: '+m.playerHits+' ударов',W*.25,H*.68);
-        ctx.fillStyle='#ff4444';ctx.fillText((isAlien?'Пришелец: ':'Босс: ')+m.bossHits+' ударов',W*.75,H*.68);
+        ctx.fillStyle='#ff4444';ctx.fillText((isAlien?'Пришелец: ':isRobot?'Робот: ':'Босс: ')+m.bossHits+' ударов',W*.75,H*.68);
         // Boss HP bar
         ctx.fillStyle='rgba(0,0,0,.6)';ctx.beginPath();ctx.roundRect(W/2-150,H*.55,300,12,6);ctx.fill();
-        ctx.fillStyle=enraged?'#ff8c00':'#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/8),8,4);ctx.fill();
+        ctx.fillStyle=enraged?'#ff8c00':'#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/(isRobot?10:8)),8,4);ctx.fill();
         // Prompt
         const pulse=.7+.3*Math.sin(Date.now()*.01);
         ctx.globalAlpha=pulse;
