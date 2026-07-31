@@ -102,6 +102,10 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
             <div style="margin-top:12px;color:#666;font-size:11px">
                 ⬆ Пробел/клик — прыжок &nbsp; ⬇ S/↓ — скольжение &nbsp; ⚔ J / E / ПКМ — удар
             </div>
+            <div id="leaderboard" style="margin-top:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:10px;max-height:160px;overflow-y:auto">
+                <div style="color:#ffd700;font-weight:700;font-size:13px;margin-bottom:4px">🌍 Лучшие в мире</div>
+                <div id="leaderboardList" style="color:#ccc;font-size:11px;text-align:left;line-height:1.5">Загрузка...</div>
+            </div>
             <div style="margin-top:8px;color:rgba(255,255,255,.12);font-size:9px">Автор Арман Сагинтаев</div>
         </div>
         <div class="menu-panel" id="skinMenu" style="display:none">
@@ -587,6 +591,34 @@ function gameOver() {
     const earned=isNaN(saveData.totalEarned)?0:saveData.totalEarned;
     document.getElementById('gameoverStats').innerHTML='🪙 Монет: <span>'+coins+'</span><br>📏 Дистанция: <span>'+dist+'м</span><br>💰 Всего: <span>'+earned+'</span>';
     document.getElementById('gameover-overlay').classList.add('active');
+    submitCloudScore();
+}
+
+function loadCloudScores(){
+    const listEl=document.getElementById('leaderboardList');
+    try{
+        fetch('/api/score',{method:'GET'}).then(r=>r.json()).then(d=>{
+            if(!d||!d.ok||!Array.isArray(d.scores)){listEl.textContent='Нет данных';return}
+            if(d.scores.length===0){listEl.textContent='Пока нет рекордов — стань первым!';return}
+            const medals=['🥇','🥈','🥉'];
+            listEl.innerHTML=d.scores.slice(0,10).map((s,i)=>{
+                const medal=medals[i]||(i+1)+'.';
+                const cur=s.score>0?('🪙 '+s.score+' | 📏 '+s.distance+'м'):('📏 '+s.distance+'м');
+                return '<div>'+medal+' <b style="color:#fff">'+s.player+'</b> — '+cur+'</div>';
+            }).join('');
+        }).catch(()=>{listEl.textContent='Рекорды недоступны'});
+    }catch(e){listEl.textContent='Рекорды недоступны'}
+}
+function submitCloudScore(){
+    const dist=isNaN(state.distance)?0:Math.floor(state.distance);
+    const coins=isNaN(state.coins)?0:Math.floor(state.coins);
+    const total=(isNaN(saveData.totalEarned)?0:Math.floor(saveData.totalEarned))+coins;
+    let player='';
+    try{player=(localStorage.getItem('coinRunnerPlayer')||'Игрок').slice(0,20)}catch(e){player='Игрок'}
+    try{
+        fetch('/api/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:player,score:total,distance:dist})})
+            .then(r=>r.json()).then(()=>{if(!state.gameOver)return;loadCloudScores()}).catch(()=>{});
+    }catch(e){}
 }
 
 function update() {
@@ -1248,6 +1280,7 @@ function gameLoop(timestamp){
     requestAnimationFrame(gameLoop)
 }
 updateMenuDisplay();
+loadCloudScores();
 gameLoop();
 </script>
 </body>
