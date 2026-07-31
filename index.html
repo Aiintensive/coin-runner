@@ -862,6 +862,8 @@ function stopGame() {
     document.getElementById('gameover-overlay').classList.remove('active');
     document.getElementById('stop-btn').style.display='none';
     document.getElementById('restart-run-btn').style.display='none';
+    state.distance=0;
+    state.currentSkin=getWorldSkin(0);
     startScreen.classList.remove('hidden');
     mainMenu.style.display='block';
     skinMenu.style.display='none';
