@@ -442,7 +442,7 @@ function spawnBoss() {
 function startMinigame(boss){
     if(!boss||boss.type!=='bosszombie'||boss.hp<=0)return;
     boss.minigameDone=true;
-    state.minigame={boss:boss,playerHits:0,bossHits:0,time:480,maxTime:480,punchCd:0,bossPunchCd:70,active:true};
+    state.minigame={boss:boss,playerHits:0,bossHits:0,time:420,maxTime:420,punchCd:0,bossPunchCd:50,active:true};
     state.bossPopup={text:'👊 БОЙ С БОССОМ!',life:70,maxLife:70};
     state.shakeAmount=6;
 }
@@ -450,6 +450,12 @@ function minigamePunch(){
     const m=state.minigame;
     if(!m)return;
     m.playerHits++;
+    const enraged=m.boss&&m.boss.hp<=3;
+    const blocked=enraged?Math.random()<.12:Math.random()<.18;
+    if(blocked&&m.boss.hp>0){
+        state.coinPopups.push({x:state.charX+CHAR_W/2,y:state.charY-10,text:'БЛОК!',life:25,maxLife:25});
+        return;
+    }
     if(m.boss.hp>0)m.boss.hp--;
     m.boss.flash=6;
     addHitEffect(state.charX+CHAR_W/2,state.charY+10);
@@ -460,12 +466,15 @@ function updateMinigame(){
     const m=state.minigame;
     if(!m)return;
     m.time--;
+    const enraged=m.boss&&m.boss.hp<=3;
+    const punchCd=enraged?38:50;
+    const dmg=enraged?6:5;
     m.bossPunchCd--;
     if(m.bossPunchCd<=0){
-        m.bossPunchCd=70;
+        m.bossPunchCd=punchCd;
         m.bossHits++;
         addHitEffect(state.charX+CHAR_W/2,state.charY+10);
-        state.hp-=4;state.invincible=15;state.shakeAmount=6;
+        state.hp-=dmg;state.invincible=15;state.shakeAmount=6;
         if(state.hp<=0){gameOver();return}
     }
     if(m.time<=0)endMinigame(false);
@@ -1461,6 +1470,7 @@ function draw() {
     if(state.minigame){
         const m=state.minigame;
         const skin=getSkin();
+        const enraged=m.boss&&m.boss.hp<=3;
         ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
         // Timer bar
         const tp=Math.max(0,m.time/m.maxTime);
@@ -1470,6 +1480,10 @@ function draw() {
         // VS header
         ctx.fillStyle='#ff4444';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText('👊 БОЙ С БОССОМ!',W/2,60);
+        if(enraged){
+            ctx.fillStyle='#ff4444';ctx.font='bold 15px Arial';
+            ctx.fillText('😡 БОСС В ЯРОСТИ!',W/2,82);
+        }
         // Player (left) and Boss (right) characters
         const fx=W*.25,fy=H*.5;
         // Player
@@ -1486,8 +1500,9 @@ function draw() {
         // Boss (right)
         const bx=W*.75,by=H*.5;
         ctx.save();ctx.translate(bx,by);ctx.scale(1.8,1.8);
-        ctx.fillStyle='#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
-        ctx.fillStyle='#5a4a7a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
+        if(enraged)ctx.fillStyle='rgba(255,0,0,.25)';ctx.beginPath();ctx.arc(0,0,46,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=enraged?'#6a2a5a':'#3a2a4a';ctx.beginPath();ctx.roundRect(-18,-28,36,48,6);ctx.fill();
+        ctx.fillStyle=enraged?'#8a4a7a':'#5a4a7a';ctx.beginPath();ctx.arc(0,-38,14,0,Math.PI*2);ctx.fill();
         ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(-6,-39,3.5,0,Math.PI*2);ctx.fill();
         ctx.beginPath();ctx.arc(6,-39,3.5,0,Math.PI*2);ctx.fill();
         ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,-50);ctx.lineTo(-3,-42);ctx.lineTo(3,-50);ctx.lineTo(9,-42);ctx.stroke();
@@ -1503,7 +1518,7 @@ function draw() {
         ctx.fillStyle='#ff4444';ctx.fillText('Босс: '+m.bossHits+' ударов',W*.75,H*.68);
         // Boss HP bar
         ctx.fillStyle='rgba(0,0,0,.6)';ctx.beginPath();ctx.roundRect(W/2-150,H*.55,300,12,6);ctx.fill();
-        ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/8),8,4);ctx.fill();
+        ctx.fillStyle=enraged?'#ff8c00':'#e74c3c';ctx.beginPath();ctx.roundRect(W/2-148,H*.57,296*Math.max(0,m.boss.hp/8),8,4);ctx.fill();
         // Prompt
         const pulse=.7+.3*Math.sin(Date.now()*.01);
         ctx.globalAlpha=pulse;
@@ -1511,7 +1526,7 @@ function draw() {
         ctx.fillText('ЖМИ ПРОБЕЛ / КЛИК — БЕЙ!',W/2,H*.82);
         ctx.globalAlpha=1;
         ctx.font='12px Arial';ctx.fillStyle='#aaa';
-        ctx.fillText('Больше ударов до конца таймера — победа',W/2,H*.88);
+        ctx.fillText('Босс иногда блокирует удар!',W/2,H*.88);
     }
     // Author credit
     ctx.fillStyle='rgba(255,255,255,.12)';ctx.font='9px Arial';ctx.textAlign='right';ctx.textBaseline='bottom';
