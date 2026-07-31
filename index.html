@@ -18,6 +18,8 @@ body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;m
 canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
 #fullscreen-btn{position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
 #fullscreen-btn:hover{background:rgba(0,0,0,.6)}
+#stop-btn{position:absolute;top:8px;right:48px;z-index:20;display:none;background:rgba(231,76,60,.45);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:13px;height:32px;padding:0 10px;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
+#stop-btn:hover{background:rgba(231,76,60,.75)}
 #mobile-controls{position:absolute;bottom:10px;left:0;width:100%;display:none;justify-content:space-between;padding:0 16px;pointer-events:none;z-index:5}
 #mobile-controls button{pointer-events:auto;width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:background .1s}
 #mobile-controls button:active{background:rgba(255,255,255,.3)}
@@ -96,6 +98,7 @@ canvas{display:block;background:#87CEEB;touch-action:none;cursor:pointer}
 <div class="game-wrapper" id="gameWrapper">
     <canvas id="gameCanvas"></canvas>
     <button id="fullscreen-btn">⛶</button>
+    <button id="stop-btn">⏹ Стоп</button>
 
     <div class="start-screen" id="startScreen">
         <div class="menu-panel" id="mainMenu">
@@ -722,6 +725,8 @@ function renderWeapons() {
 
 document.getElementById('playBtn').addEventListener('click',startGame);
 document.getElementById('playBtn').addEventListener('touchend',e=>{e.preventDefault();startGame()});
+document.getElementById('stop-btn').addEventListener('click',stopGame);
+document.getElementById('stop-btn').addEventListener('touchend',e=>{e.preventDefault();stopGame()});
 document.getElementById('restartBtn').addEventListener('click',startGame);
 document.getElementById('restartBtn').addEventListener('touchend',e=>{e.preventDefault();startGame()});
 document.getElementById('skinBtn').addEventListener('click',()=>{skinMode='normal';skinFromWorld=false;mainMenu.style.display='none';skinMenu.style.display='block';renderSkins()});
@@ -818,12 +823,28 @@ function startGame(startDist) {
     document.getElementById('gameover-overlay').classList.remove('active');
     shopOverlay.classList.remove('active');
     welcomeOverlay.classList.remove('active');
+    document.getElementById('stop-btn').style.display='flex';
     state.playing=true;
+}
+
+function stopGame() {
+    if(!state.playing&&!state.upgrading)return;
+    state.upgrading=false;state.gameOver=true;state.playing=false;
+    if(typeof state.distance==='number'&&!isNaN(state.distance)&&state.distance>(saveData.highScore||0))saveData.highScore=Math.floor(state.distance);
+    try{saveGame()}catch(e){}
+    document.getElementById('upgrade-overlay').classList.remove('active');
+    document.getElementById('gameover-overlay').classList.remove('active');
+    document.getElementById('stop-btn').style.display='none';
+    startScreen.classList.remove('hidden');
+    mainMenu.style.display='block';
+    skinMenu.style.display='none';
+    updateMenuDisplay();
 }
 
 function gameOver() {
     if(state.gameOver)return;
     state.gameOver=true;state.playing=false;state.shakeAmount=12;
+    document.getElementById('stop-btn').style.display='none';
     if(typeof state.distance==='number'&&!isNaN(state.distance)&&state.distance>(saveData.highScore||0))saveData.highScore=Math.floor(state.distance);
     try{saveGame()}catch(e){}
     const coins=isNaN(state.coins)?0:Math.floor(state.coins);
