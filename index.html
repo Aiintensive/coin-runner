@@ -653,6 +653,7 @@ const welcomeOverlay=document.getElementById('welcome-overlay');
 let shopMode='normal';
 let skinMode='normal';
 let skinFromWorld=false;
+let resumeDist=0;
 
 function saveGame(){try{localStorage.setItem('coinRunner',JSON.stringify(saveData))}catch(e){console.warn('Save failed:',e)}}
 function updateMenuDisplay(){
@@ -774,12 +775,13 @@ document.getElementById('weaponShopBtn').addEventListener('click',()=>{
 });
 document.getElementById('shopBackBtn').addEventListener('click',()=>{shopOverlay.classList.remove('active')});
 document.getElementById('shopBackBtn').addEventListener('touchend',e=>{e.preventDefault();shopOverlay.classList.remove('active')});
-document.getElementById('shopStartBtn').addEventListener('click',()=>startGame(shopMode==='cyber'?30000:15000));
-document.getElementById('shopStartBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(shopMode==='cyber'?30000:15000)});
+document.getElementById('shopStartBtn').addEventListener('click',()=>startGame(resumeDist>=15000?resumeDist:(shopMode==='cyber'?30000:15000)));
+document.getElementById('shopStartBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(resumeDist>=15000?resumeDist:(shopMode==='cyber'?30000:15000))});
 function openWorldMenu(world){
     const hs=saveData.highScore||0;
     if(world==='space'&&hs<15000){alert('🔒 Нужен рекорд 15000 м, чтобы открыть Второй мир!');return}
     if(world==='cyber'&&hs<30000){alert('🔒 Нужен рекорд 30000 м, чтобы открыть Третий мир!');return}
+    resumeDist=0;
     if(world==='space'){
         shopMode='space';
         document.getElementById('welcomeTitle').textContent='🚀 Второй мир';
@@ -811,10 +813,10 @@ document.getElementById('world3Btn').addEventListener('click',()=>openWorldMenu(
 document.getElementById('world3Btn').addEventListener('touchend',e=>{e.preventDefault();openWorldMenu('cyber')});
 document.getElementById('welcomeContinueBtn').addEventListener('click',openWorldShop);
 document.getElementById('welcomeContinueBtn').addEventListener('touchend',e=>{e.preventDefault();openWorldShop()});
-document.getElementById('welcomePlayBtn').addEventListener('click',()=>startGame(shopMode==='cyber'?30000:15000));
-document.getElementById('welcomePlayBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(shopMode==='cyber'?30000:15000)});
-document.getElementById('welcomeBackBtn').addEventListener('click',()=>{welcomeOverlay.classList.remove('active');state.distance=0;state.currentSkin=getWorldSkin(0)});
-document.getElementById('welcomeBackBtn').addEventListener('touchend',e=>{e.preventDefault();welcomeOverlay.classList.remove('active');state.distance=0;state.currentSkin=getWorldSkin(0)});
+document.getElementById('welcomePlayBtn').addEventListener('click',()=>startGame(resumeDist>=15000?resumeDist:(shopMode==='cyber'?30000:15000)));
+document.getElementById('welcomePlayBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(resumeDist>=15000?resumeDist:(shopMode==='cyber'?30000:15000))});
+document.getElementById('welcomeBackBtn').addEventListener('click',()=>{welcomeOverlay.classList.remove('active');resumeDist=0;state.distance=0;state.currentSkin=getWorldSkin(0)});
+document.getElementById('welcomeBackBtn').addEventListener('touchend',e=>{e.preventDefault();welcomeOverlay.classList.remove('active');resumeDist=0;state.distance=0;state.currentSkin=getWorldSkin(0)});
 document.getElementById('welcomeSkinBtn').addEventListener('click',()=>{
     skinMode=shopMode==='cyber'?'cyber':'space';
     skinFromWorld=true;
@@ -889,11 +891,14 @@ function stopGame() {
         state.distance=30000;state.currentSkin=getWorldSkin(30000);
         mainMenu.style.display='block';
         openWorldMenu('cyber');
+        resumeDist=wasDist;
     }else if(wasDist>=15000){
         state.distance=15000;state.currentSkin=getWorldSkin(15000);
         mainMenu.style.display='block';
         openWorldMenu('space');
+        resumeDist=wasDist;
     }else{
+        resumeDist=0;
         state.distance=0;state.currentSkin=getWorldSkin(0);
         mainMenu.style.display='block';
     }
