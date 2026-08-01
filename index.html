@@ -813,8 +813,8 @@ document.getElementById('welcomeContinueBtn').addEventListener('click',openWorld
 document.getElementById('welcomeContinueBtn').addEventListener('touchend',e=>{e.preventDefault();openWorldShop()});
 document.getElementById('welcomePlayBtn').addEventListener('click',()=>startGame(shopMode==='cyber'?30000:15000));
 document.getElementById('welcomePlayBtn').addEventListener('touchend',e=>{e.preventDefault();startGame(shopMode==='cyber'?30000:15000)});
-document.getElementById('welcomeBackBtn').addEventListener('click',()=>{welcomeOverlay.classList.remove('active')});
-document.getElementById('welcomeBackBtn').addEventListener('touchend',e=>{e.preventDefault();welcomeOverlay.classList.remove('active')});
+document.getElementById('welcomeBackBtn').addEventListener('click',()=>{welcomeOverlay.classList.remove('active');state.distance=0;state.currentSkin=getWorldSkin(0)});
+document.getElementById('welcomeBackBtn').addEventListener('touchend',e=>{e.preventDefault();welcomeOverlay.classList.remove('active');state.distance=0;state.currentSkin=getWorldSkin(0)});
 document.getElementById('welcomeSkinBtn').addEventListener('click',()=>{
     skinMode=shopMode==='cyber'?'cyber':'space';
     skinFromWorld=true;
@@ -875,18 +875,28 @@ function startGame(startDist) {
 
 function stopGame() {
     if(!state.playing&&!state.upgrading)return;
+    const wasDist=typeof state.distance==='number'&&!isNaN(state.distance)?state.distance:0;
     state.upgrading=false;state.gameOver=true;state.playing=false;
-    if(typeof state.distance==='number'&&!isNaN(state.distance)&&state.distance>(saveData.highScore||0))saveData.highScore=Math.floor(state.distance);
+    if(wasDist>(saveData.highScore||0))saveData.highScore=Math.floor(wasDist);
     try{saveGame()}catch(e){}
     document.getElementById('upgrade-overlay').classList.remove('active');
     document.getElementById('gameover-overlay').classList.remove('active');
     document.getElementById('stop-btn').style.display='none';
     document.getElementById('restart-run-btn').style.display='none';
-    state.distance=0;
-    state.currentSkin=getWorldSkin(0);
     startScreen.classList.remove('hidden');
-    mainMenu.style.display='block';
     skinMenu.style.display='none';
+    if(wasDist>=30000){
+        state.distance=30000;state.currentSkin=getWorldSkin(30000);
+        mainMenu.style.display='block';
+        openWorldMenu('cyber');
+    }else if(wasDist>=15000){
+        state.distance=15000;state.currentSkin=getWorldSkin(15000);
+        mainMenu.style.display='block';
+        openWorldMenu('space');
+    }else{
+        state.distance=0;state.currentSkin=getWorldSkin(0);
+        mainMenu.style.display='block';
+    }
     updateMenuDisplay();
 }
 
